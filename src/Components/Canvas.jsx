@@ -9,7 +9,7 @@ const Canvas = () => {
     const canvasRef = useRef(null);
     const [isDragging, setIsDragging] = useState(false);
     const [mouseDownTime, setMouseDownTime] = useState(null); // Add this for click vs drag detection
-
+    const [selectedShapeId, setSelectedShapeId] = useState(null);
     
     const getCanvasPosition = (e) => {
         const rect = canvasRef.current.getBoundingClientRect();
@@ -18,7 +18,13 @@ const Canvas = () => {
             y: e.clientY - rect.top
         };
     };
-
+    const handleShapeClick = (e, shapeId) => {
+        e.stopPropagation();  
+        setSelectedShapeId(shapeId);
+    }
+    const handleCanvasClick = (e) => {
+        setSelectedShapeId(null)
+    }
     const handleMouseDown = (e) => {
         if (selectedTool) {
             e.preventDefault();
@@ -27,7 +33,7 @@ const Canvas = () => {
             setIsDrawing(true);
             setStartPos(pos);
             setIsDragging(false);
-            setMouseDownTime(Date.now());  // Record when mouse was pressed
+            setMouseDownTime(Date.now());  
             
             const newShape = {
                 id: Date.now(),
@@ -74,7 +80,7 @@ const Canvas = () => {
             const wasQuickClick = Date.now() - mouseDownTime < 200; // Check if it was a quick click
             
             if (wasQuickClick) {
-                // If it was a quick click, set default size
+               
                 setShapes(prev => {
                     const updated = [...prev];
                     const currentShape = updated[updated.length - 1];
@@ -98,9 +104,11 @@ const Canvas = () => {
         if (isDragging) {
             setIsDragging(false);
         }
+        handleCanvasClick();
     };
 
     const renderShape = (shape) => {
+        const isSelected = shape.id === selectedShapeId;
         switch (shape.type) {
             case 'rectangle':
                 return (
@@ -111,9 +119,10 @@ const Canvas = () => {
                             top: shape.y,
                             width: shape.width,
                             height: shape.height,
-                            border: '1px solid black',
-                            pointerEvents: 'none'
+                            border: `1px solid ${isSelected ? 'blue' : 'black'}`, 
+                            pointerEvents: 'all' 
                         }}
+                        onClick={(e) => handleShapeClick(e, shape.id)}
                     />
                 );
             default:
