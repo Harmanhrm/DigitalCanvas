@@ -8,7 +8,7 @@ const Canvas = () => {
     const [shapes, setShapes] = useState([]);
     const canvasRef = useRef(null);
     const [isDragging, setIsDragging] = useState(false);
-    const [mouseDownTime, setMouseDownTime] = useState(null); // Add this for click vs drag detection
+    const [mouseDownTime, setMouseDownTime] = useState(null); 
     const [selectedShapeId, setSelectedShapeId] = useState(null);
     
     const getCanvasPosition = (e) => {
@@ -26,12 +26,12 @@ const Canvas = () => {
         setSelectedShapeId(null)
     }
     const handleMouseDown = (e) => {
+        const pos = getCanvasPosition(e);
+        setStartPos(pos);
         if (selectedTool) {
             e.preventDefault();
             e.stopPropagation();
-            const pos = getCanvasPosition(e);
             setIsDrawing(true);
-            setStartPos(pos);
             setIsDragging(false);
             setMouseDownTime(Date.now());  
             
@@ -47,9 +47,17 @@ const Canvas = () => {
             };
             setShapes(prev => [...prev, newShape]);
         }
+        else if (selectedShapeId) {
+            setIsDragging(true);
+            e.preventDefault();
+            e.stopPropagation();
+        }
     };
 
     const handleMouseMove = (e) => {
+        if (!startPos) return;
+
+        const currentPos = getCanvasPosition(e);
         if (isDrawing && startPos) {
             setIsDragging(true);
             e.preventDefault();
@@ -73,14 +81,34 @@ const Canvas = () => {
                 return updated;
             });
         }
+        else if (isDragging && selectedShapeId) {
+            e.preventDefault();
+            e.stopPropagation();
+            const dx = currentPos.x - startPos.x;
+        const dy = currentPos.y - startPos.y;
+
+        setShapes(prev => prev.map(shape => {
+            if (shape.id === selectedShapeId) {
+                return {
+                    ...shape,
+                    x: shape.x + dx,
+                    y: shape.y + dy,
+                    startX: shape.startX + dx,
+                    startY: shape.startY + dy
+                };
+            }
+            return shape;
+        }));
+        
+        setStartPos(currentPos);
+        }
     };
 
     const handleMouseUp = () => {
         if (isDrawing) {
-            const wasQuickClick = Date.now() - mouseDownTime < 200; // Check if it was a quick click
+            const wasQuickClick = Date.now() - mouseDownTime < 200;
             
             if (wasQuickClick) {
-               
                 setShapes(prev => {
                     const updated = [...prev];
                     const currentShape = updated[updated.length - 1];
@@ -91,12 +119,14 @@ const Canvas = () => {
                     return updated;
                 });
             }
-
+    
             setIsDrawing(false);
-            setStartPos(null);
             setSelectedTool(null);
             setMouseDownTime(null);
         }
+        
+        setIsDragging(false);
+        setStartPos(null);
     };
 
     const handleClick = (e) => {
@@ -119,8 +149,9 @@ const Canvas = () => {
                             top: shape.y,
                             width: shape.width,
                             height: shape.height,
-                            border: `1px solid ${isSelected ? 'blue' : 'black'}`, 
-                            pointerEvents: 'all' 
+                            border: `1px solid ${isSelected ? 'blue' : 'black'}`,
+                            pointerEvents: 'all',
+                            cursor: isSelected ? 'move' : 'pointer' // Add cursor style
                         }}
                         onClick={(e) => handleShapeClick(e, shape.id)}
                     />
