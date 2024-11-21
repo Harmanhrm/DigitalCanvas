@@ -69,3 +69,26 @@
     background-color: #e0e0e0;
     border-color: #666;
 }
+
+.shape-tools {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.tool-button {
+    padding: 8px;
+    border: 1px solid #ccc;
+    background: white;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.tool-button.selected {
+    background: #e0e0e0;
+    border-color: #999;
+}
+
+.tool-button span {
+    font-size: 20px;
+}

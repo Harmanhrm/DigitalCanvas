@@ -11,6 +11,76 @@ const Canvas = () => {
     const [mouseDownTime, setMouseDownTime] = useState(null); 
     const [selectedShapeId, setSelectedShapeId] = useState(null);
     
+    // For connecting nodes of different shapes
+    const [connections, setConnections] = useState([]);
+    const [connectingFrom, setConnectingFrom] = useState(null);
+    const [isConnecting, setIsConnecting] = useState(false);
+
+    const TOOLS = {
+        RECTANGLE: 'rectangle',
+        ARROW: 'arrow-shape'
+    };
+    const [showNodes, setShowNodes] = useState(false);
+    const handleNodeClick = (e, shapeId, nodePosition) => {
+        e.stopPropagation();
+        
+        if (!connectingFrom) {
+            setConnectingFrom({ shapeId, nodePosition });
+            setIsConnecting(true);
+        } else {
+            // Create new connection
+            setConnections(prev => [...prev, {
+                id: Date.now(),
+                from: connectingFrom,
+                to: { shapeId, nodePosition }
+            }]);
+            setConnectingFrom(null);
+            setIsConnecting(false);
+        }
+    };
+    const renderConnections = () => {
+        return connections.map(connection => (
+            <svg
+                key={connection.id}
+                style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    pointerEvents: 'none'
+                }}
+            >
+                <line
+                    x1={getNodePosition(connection.from).x}
+                    y1={getNodePosition(connection.from).y}
+                    x2={getNodePosition(connection.to).x}
+                    y2={getNodePosition(connection.to).y}
+                    stroke="black"
+                    strokeWidth="2"
+                />
+            </svg>
+        ));
+    };
+    
+    // Helper to get node position
+    const getNodePosition = (nodeInfo) => {
+        const shape = shapes.find(s => s.id === nodeInfo.shapeId);
+        if (!shape) return { x: 0, y: 0 };
+    
+        switch (nodeInfo.nodePosition) {
+            case 'left':
+                return { x: shape.x, y: shape.y + shape.height/2 };
+            case 'right':
+                return { x: shape.x + shape.width, y: shape.y + shape.height/2 };
+            case 'top':
+                return { x: shape.x + shape.width/2, y: shape.y };
+            case 'bottom':
+                return { x: shape.x + shape.width/2, y: shape.y + shape.height };
+            default:
+                return { x: 0, y: 0 };
+        }
+    };
     const getCanvasPosition = (e) => {
         const rect = canvasRef.current.getBoundingClientRect();
         return {
@@ -43,7 +113,7 @@ const Canvas = () => {
                 x: pos.x,
                 y: pos.y,
                 width: 0,
-                height: 0
+                height: selectedTool === TOOLS.ARROW_SHAPE ? 20 : 0
             };
             setShapes(prev => [...prev, newShape]);
         }
@@ -113,8 +183,8 @@ const Canvas = () => {
                     const updated = [...prev];
                     const currentShape = updated[updated.length - 1];
                     if (currentShape) {
-                        currentShape.width = 100;
-                        currentShape.height = 50;
+                        currentShape.width = currentShape.type === TOOLS.ARROW_SHAPE ? 100 : 100;
+                    currentShape.height = currentShape.type === TOOLS.ARROW_SHAPE ? 20 : 50;
                     }
                     return updated;
                 });
@@ -139,8 +209,29 @@ const Canvas = () => {
 
     const renderShape = (shape) => {
         const isSelected = shape.id === selectedShapeId;
+        
+        const ConnectionNode = ({ position, nodePosition }) => {
+            const nodeStyle = {
+                position: 'absolute',
+                width: '8px',
+                height: '8px',
+                backgroundColor: isSelected ? '#4a9eff' : 'transparent',
+                border: '2px solid #4a9eff',
+                borderRadius: '50%',
+                cursor: 'pointer',
+                ...position
+            };
+    
+            return (
+                <div 
+                    style={nodeStyle} 
+                    onClick={(e) => handleNodeClick(e, shape.id, nodePosition)}
+                />
+            );
+        };
+    
         switch (shape.type) {
-            case 'rectangle':
+            case TOOLS.RECTANGLE:
                 return (
                     <div
                         style={{
@@ -151,10 +242,89 @@ const Canvas = () => {
                             height: shape.height,
                             border: `1px solid ${isSelected ? 'blue' : 'black'}`,
                             pointerEvents: 'all',
-                            cursor: isSelected ? 'move' : 'pointer' // Add cursor style
+                            cursor: isSelected ? 'move' : 'pointer'
                         }}
                         onClick={(e) => handleShapeClick(e, shape.id)}
-                    />
+                    >
+                        {(isSelected && showNodes) && (
+                            <>
+                                <ConnectionNode 
+                                    position={{ left: '-6px', top: 'calc(50% - 4px)' }}
+                                    nodePosition="left"
+                                />
+                                <ConnectionNode 
+                                    position={{ right: '-6px', top: 'calc(50% - 4px)' }}
+                                    nodePosition="right"
+                                />
+                                <ConnectionNode 
+                                    position={{ top: '-6px', left: 'calc(50% - 4px)' }}
+                                    nodePosition="top"
+                                />
+                                <ConnectionNode 
+                                    position={{ bottom: '-6px', left: 'calc(50% - 4px)' }}
+                                    nodePosition="bottom"
+                                />
+                            </>
+                        )}
+                    </div>
+                );
+            case TOOLS.ARROW_SHAPE:
+                return (
+                    <div
+                        style={{
+                            position: 'absolute',
+                            left: shape.x,
+                            top: shape.y,
+                            width: shape.width,
+                            height: shape.height,
+                            pointerEvents: 'all',
+                            cursor: isSelected ? 'move' : 'pointer'
+                        }}
+                        onClick={(e) => handleShapeClick(e, shape.id)}
+                    >
+                        <svg
+                            width="100%"
+                            height="100%"
+                            style={{ pointerEvents: 'none' }}
+                        >
+                            <defs>
+                                <marker
+                                    id={`arrowhead-${shape.id}`}
+                                    markerWidth="10"
+                                    markerHeight="7"
+                                    refX="9"
+                                    refY="3.5"
+                                    orient="auto"
+                                >
+                                    <polygon 
+                                        points="0 0, 10 3.5, 0 7" 
+                                        fill={isSelected ? 'blue' : 'black'}
+                                    />
+                                </marker>
+                            </defs>
+                            <line
+                                x1="0"
+                                y1={shape.height / 2}
+                                x2={shape.width}
+                                y2={shape.height / 2}
+                                stroke={isSelected ? 'blue' : 'black'}
+                                strokeWidth="2"
+                                markerEnd={`url(#arrowhead-${shape.id})`}
+                            />
+                        </svg>
+                        {(isSelected && showNodes) && (
+                            <>
+                                <ConnectionNode 
+                                    position={{ left: '-6px', top: 'calc(50% - 4px)' }}
+                                    nodePosition="start"
+                                />
+                                <ConnectionNode 
+                                    position={{ right: '-6px', top: 'calc(50% - 4px)' }}
+                                    nodePosition="end"
+                                />
+                            </>
+                        )}
+                    </div>
                 );
             default:
                 return null;
@@ -165,15 +335,28 @@ const Canvas = () => {
         <div className='Canvas'>
             <div className='toolbar-top'>
                 <button 
-                    className={`rectangular-box ${selectedTool === 'rectangle' ? 'selected' : ''}`}
-                    onClick={() => setSelectedTool('rectangle')}
+                    className={`tool-button ${selectedTool === TOOLS.RECTANGLE ? 'selected' : ''}`}
+                    onClick={() => setSelectedTool(TOOLS.RECTANGLE)}
                 >
                     Rectangle
+                </button>
+                <button 
+                    className={`tool-button ${selectedTool === TOOLS.ARROW_SHAPE ? 'selected' : ''}`}
+                    onClick={() => setSelectedTool(TOOLS.ARROW_SHAPE)}
+                >
+                    Arrow
                 </button>
             </div>
             <div className='toolbar-bottom' />
             <div className='toolbar-right' />
-            <div className='toolbar-left' />
+            <div className='toolbar-left'>
+                <button 
+                    className={`tool-button ${showNodes ? 'selected' : ''}`}
+                    onClick={() => setShowNodes(!showNodes)}
+                >
+                    {showNodes ? 'Hide Nodes' : 'Show Nodes'}
+                </button>
+            </div>
             <div 
                 ref={canvasRef}
                 className='innerCanvas'
@@ -183,6 +366,7 @@ const Canvas = () => {
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseUp}
             >
+                {renderConnections()}
                 {shapes.map(shape => (
                     <div key={shape.id}>
                         {renderShape(shape)}
