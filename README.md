@@ -1,70 +1,125 @@
-# Getting Started with Create React App
+# React Drawing Canvas
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A flexible React component that provides an interactive canvas for creating and manipulating rectangles and arrows with node-based connections.
 
-## Available Scripts
+## Features
 
-In the project directory, you can run:
+- **Drawing Tools**
+  - Rectangle: Click and drag to create rectangles, or click once for a default-sized rectangle (100x50)
+  - Arrow: Create arrows with customizable start and end points
+  
+- **Interactive Elements**
+  - Shape Selection: Click to select/deselect shapes
+  - Drag and Drop: Move shapes freely on the canvas
+  - Connection Nodes: Toggle visibility of connection points for shapes
+  - Smart Snapping: Arrows automatically snap to nearby connection points within 20 pixels
 
-### `npm start`
+- **Connection System**
+  - Node-based connections for rectangles (left, right, top, bottom)
+  - Arrows maintain connections when moving connected shapes
+  - Visual feedback for selected shapes and connection points
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## Installation
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+1. Add the component to your React project
+2. Include the required CSS file (`Canvas.css`)
 
-### `npm test`
+## Usage
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+```jsx
+import Canvas from './Canvas';
 
-### `npm run build`
+function App() {
+  return (
+    <div className="App">
+      <Canvas />
+    </div>
+  );
+}
+```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Component Interface
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### Tools
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+The canvas provides two main tools:
+- Rectangle Tool: Creates rectangular shapes
+- Arrow Tool: Creates arrows that can connect to rectangles
 
-### `npm run eject`
+### Controls
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+- **Top Toolbar**
+  - Rectangle: Switch to rectangle drawing mode
+  - Arrow: Switch to arrow drawing mode
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+- **Left Toolbar**
+  - Show/Hide Nodes: Toggle connection points visibility
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### Interactions
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+1. **Drawing Shapes**
+   - Select a tool from the toolbar
+   - Click and drag on the canvas to draw
+   - For rectangles, quick click creates a default 100x50 rectangle
 
-## Learn More
+2. **Selecting Shapes**
+   - Click on any shape to select it
+   - Click on the canvas to deselect
+   - Selected shapes show in blue
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+3. **Moving Shapes**
+   - Select a shape and drag to move it
+   - Connected arrows maintain their connections during movement
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+4. **Connecting Arrows**
+   - Show connection nodes using the toolbar button
+   - Drag arrow endpoints near connection nodes to snap
+   - Arrows automatically stay connected when moving shapes
 
-### Code Splitting
+## Technical Details
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+### Key Features Implementation
 
-### Analyzing the Bundle Size
+- **Snapping System**
+  - Uses `SNAP_DISTANCE` constant (20 pixels)
+  - Automatically finds nearest connection point
+  - Maintains connections during shape movement
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+- **Shape Management**
+  - Unique IDs for each shape
+  - State management for selections and dragging
+  - Separate rendering logic for different shape types
 
-### Making a Progressive Web App
+### State Management
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+The component manages several states:
+- `selectedTool`: Current active tool
+- `shapes`: Array of all shapes on canvas
+- `selectedShapeId`: Currently selected shape
+- `isDrawing`: Drawing state
+- `isDragging`: Dragging state
+- `showNodes`: Connection nodes visibility
 
-### Advanced Configuration
+## Customization
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+The component can be customized by:
+1. Modifying the CSS file
+2. Adjusting the `SNAP_DISTANCE` constant
+3. Changing default rectangle dimensions
+4. Modifying shape styles and colors
 
-### Deployment
+## Dependencies
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+- React (with Hooks)
+- CSS Module support
 
-### `npm run build` fails to minify
+## Notes
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- The canvas uses relative positioning for all elements
+- Shapes maintain their aspect ratio during creation
+- Arrow endpoints snap to the nearest connection point within range
+- Connected arrows update their positions automatically when moving shapes
+
+## Contributing
+
+Feel free to submit issues and enhancement requests.
