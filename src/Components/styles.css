@@ -1,0 +1,108 @@
+.canvas-container {
+    position: fixed;
+    border: 1px solid black;
+    height: 100%;
+    width: 100%;
+    box-sizing: border-box;
+    display: grid;
+    grid-template-columns: calc((100% - 75%) / 2) 75% calc((100% - 75%) / 2);
+    grid-template-rows: calc((100% - 75%) / 2) 75% calc((100% - 75%) / 2);
+}
+
+.canvas-area {
+    position: relative;
+    border: 1px solid black;
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    grid-column: 2;
+    grid-row: 2;
+    background: white;
+}
+
+.toolbar {
+    display: flex;
+    gap: 8px;
+    padding: 8px;
+    align-items: center;
+    background: #f5f5f5;
+}
+
+.toolbar-top {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    border-bottom: 1px solid #ddd;
+}
+
+.toolbar-left {
+    grid-column: 1;
+    grid-row: 2;
+    border-right: 1px solid #ddd;
+}
+
+.tool-button {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    background: white;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.tool-button:hover {
+    background: #f0f0f0;
+}
+
+.tool-button.selected {
+    background: #e0e0e0;
+    border-color: #999;
+}
+
+.shape {
+    position: absolute;
+    pointer-events: all;
+}
+
+.shape.selected {
+    z-index: 1000;
+}
+
+.connection-node {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 2;
+    border: 2px solid #4a9eff;
+}
+
+.connection-node:hover {
+    background-color: #4a9eff;
+}
+
+.rectangle {
+    border: 1px solid black;
+    background-color: rgba(255, 255, 255, 0.01);
+}
+
+.rectangle.selected {
+    border-color: #4a9eff;
+}
+
+.arrow-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.arrow-line {
+    stroke-width: 2;
+}
+
+.arrow-line.selected {
+    stroke: #4a9eff;
+}
