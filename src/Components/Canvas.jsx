@@ -290,29 +290,22 @@ const Canvas = () => {
         e.stopPropagation();
         
         // Check if we clicked on the SVG or its children
-        const isArrowElement = e.target.tagName === 'line' || 
-                             e.target.tagName === 'polygon' ||
-                             e.target.tagName === 'svg';
-
+        const isArrowElement = e.target.tagName.toLowerCase() === 'line' || 
+                             e.target.tagName.toLowerCase() === 'polygon' || 
+                             e.target.tagName.toLowerCase() === 'svg';
+    
         // Get the clicked shape
         const clickedShape = shapes.find(s => s.id === shapeId);
         
-        // Only process the click if:
-        // 1. We're not drawing
-        // 2. We're not dragging
-        // 3. Either:
-        //    - We clicked a rectangle
-        //    - We clicked specifically on an arrow's SVG elements
-        if (!isDrawing && !isDragging && 
-            (clickedShape.type === TOOLS.RECTANGLE || isArrowElement)) {
-            
-            // Clear selection if clicking the same shape
-            if (selectedShapeId === shapeId) {
-                setSelectedShapeId(null);
-            } else {
-                // Set new selection
-                setSelectedShapeId(shapeId);
+        // Only process the click if we're not drawing and not dragging
+        if (!isDrawing && !isDragging && clickedShape) {
+            if (clickedShape.type === TOOLS.ARROW && !isArrowElement) {
+                // Ignore clicks on arrow's container div
+                return;
             }
+            
+            // Toggle selection
+            setSelectedShapeId(selectedShapeId === shapeId ? null : shapeId);
         }
     };
 
