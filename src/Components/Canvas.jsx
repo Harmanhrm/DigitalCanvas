@@ -41,7 +41,13 @@ const Canvas = () => {
             setShapes(prev => [...prev, newShape]);
             return;
         }
-
+        if (e.target === canvasRef.current) {
+            setSelectedId(null);
+            setIsDragging(false);
+            setStartPos(null);
+            setDraggedEndpoint(null);
+            return;
+        }
         if (selectedId && !draggedEndpoint) {
             e.preventDefault();
             setIsDragging(true);
@@ -100,30 +106,45 @@ const Canvas = () => {
                 setShapes(prev => {
                     const moving = prev.find(s => s.id === selectedId);
                     if (!moving) return prev;
-
+        
                     const dx = currentPos.x - startPos.x;
                     const dy = currentPos.y - startPos.y;
-
+        
                     if (moving.type === TOOLS.RECTANGLE) {
-                        const newX = moving.x + dx;
-                        const newY = moving.y + dy;
                         
-                        return prev.map(shape => {
-                            if (shape.id === selectedId) {
-                                return { ...shape, x: newX, y: newY };
-                            }
-                            return shape;
-                        });
+                        const movedShape = {
+                            ...moving,
+                            x: moving.x + dx,
+                            y: moving.y + dy
+                        };
+                        
+                        
+                        const updatedShapes = prev.map(shape => 
+                            shape.id === selectedId ? movedShape : shape
+                        );
+        
+                        
+                        return updateConnectedArrows(updatedShapes, movedShape);
                     } else if (moving.type === TOOLS.ARROW) {
                         return prev.map(shape => {
                             if (shape.id === selectedId) {
-                                return {
+                                const newShape = {
                                     ...shape,
                                     startX: shape.startX + dx,
                                     startY: shape.startY + dy,
                                     endX: shape.endX + dx,
                                     endY: shape.endY + dy
                                 };
+                                
+                                if (shape.snappedStart) {
+                                    newShape.startX = shape.startX;
+                                    newShape.startY = shape.startY;
+                                }
+                                if (shape.snappedEnd) {
+                                    newShape.endX = shape.endX;
+                                    newShape.endY = shape.endY;
+                                }
+                                return newShape;
                             }
                             return shape;
                         });
@@ -133,7 +154,7 @@ const Canvas = () => {
                 setStartPos(currentPos);
             }
         }
-    };
+    }
 
     const handleMouseUp = () => {
         if (isDrawing) {
@@ -151,47 +172,64 @@ const Canvas = () => {
         e.stopPropagation();
         
         if (isDrawing || isDragging) return;
-
+    
         const clickPos = getCanvasPosition(e);
         const shape = shapes.find(s => s.id === id);
         
         if (!shape) return;
-
-        const isHit = shape.type === TOOLS.RECTANGLE ?
-            clickPos.x >= shape.x && 
-            clickPos.x <= shape.x + shape.width && 
-            clickPos.y >= shape.y && 
-            clickPos.y <= shape.y + shape.height :
-            isPointOnArrow(clickPos, shape);
-
-        if (isHit) {
+    
+        
+        if (shape.type === TOOLS.RECTANGLE) {
+            const buffer = 5;
+            const isHit = clickPos.x >= shape.x - buffer && 
+                         clickPos.x <= shape.x + shape.width + buffer && 
+                         clickPos.y >= shape.y - buffer && 
+                         clickPos.y <= shape.y + shape.height + buffer;
+            
+            if (isHit) {
+                setSelectedId(selectedId === id ? null : id);
+                return; 
+            }
+        }
+        
+        
+        if (shape.type === TOOLS.ARROW && isPointOnArrow(clickPos, shape)) {
             setSelectedId(selectedId === id ? null : id);
         }
     };
+    
 
     const handleCanvasClick = (e) => {
         if (e.target === canvasRef.current) {
             setSelectedId(null);
+            setIsDragging(false);
+        setStartPos(null);
+        setDraggedEndpoint(null);
         }
     };
 
     const renderShape = (shape) => {
         const isSelected = shape.id === selectedId;
-
+    
         if (shape.type === TOOLS.RECTANGLE) {
             return (
                 <div
                     key={shape.id}
                     className={`shape rectangle ${isSelected ? 'selected' : ''}`}
                     style={{
+                        position: 'absolute',
                         left: shape.x,
                         top: shape.y,
                         width: shape.width,
                         height: shape.height,
+                        cursor: 'move',
+                        backgroundColor: '#fff',
+                        border: isSelected ? '2px solid #4a9eff' : '1px solid #000',
+                        zIndex: isSelected ? 2 : 1
                     }}
                     onClick={(e) => handleShapeClick(e, shape.id)}
                 >
-                    {showNodes && (
+                    {(showNodes || isSelected) && (
                         Object.entries({
                             left: { left: -6, top: '50%' },
                             right: { right: -6, top: '50%' },
@@ -201,7 +239,17 @@ const Canvas = () => {
                             <div
                                 key={pos}
                                 className="connection-node"
-                                style={style}
+                                style={{
+                                    ...style,
+                                    position: 'absolute',
+                                    width: '12px',
+                                    height: '12px',
+                                    backgroundColor: '#4a9eff',
+                                    borderRadius: '50%',
+                                    transform: 'translate(-50%, -50%)',
+                                    cursor: 'pointer',
+                                    zIndex: 3
+                                }}
                                 onMouseDown={(e) => {
                                     e.stopPropagation();
                                     setSelectedId(shape.id);
@@ -216,7 +264,7 @@ const Canvas = () => {
             );
         }
 
-        // Arrow rendering
+        
         const dx = shape.endX - shape.startX;
         const dy = shape.endY - shape.startY;
         const angle = Math.atan2(dy, dx);
@@ -244,7 +292,8 @@ const Canvas = () => {
                         position: 'absolute',
                         top: 0,
                         left: 0,
-                        pointerEvents: 'all'
+                        pointerEvents: 'all',
+                        cursor: 'pointer'
                     }}
                     onClick={(e) => handleShapeClick(e, shape.id)}
                 >
@@ -268,6 +317,7 @@ const Canvas = () => {
                             style={{
                                 left: shape.startX - 4,
                                 top: shape.startY - 4,
+                                cursor: 'pointer'
                             }}
                             onMouseDown={(e) => {
                                 e.stopPropagation();
@@ -282,6 +332,7 @@ const Canvas = () => {
                             style={{
                                 left: shape.endX - 4,
                                 top: shape.endY - 4,
+                                cursor: 'pointer'
                             }}
                             onMouseDown={(e) => {
                                 e.stopPropagation();

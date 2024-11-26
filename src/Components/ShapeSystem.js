@@ -3,7 +3,6 @@ const TOOLS = {
     ARROW: 'arrow'
 };
 
-// Shape utilities
 const getNodePosition = (shape, position) => {
     switch (position) {
         case 'left':
@@ -85,30 +84,37 @@ const createShape = (type, position) => {
     };
 };
 
-const updateConnectedArrows = (shapes, movingShape, newX, newY) => {
+// Fixed arrow update logic
+const updateConnectedArrows = (shapes, movingShape) => {
     return shapes.map(shape => {
         if (shape.type === TOOLS.ARROW) {
-            const updates = {};
+            let updates = {};
             
+            // Handle start point connection
             if (shape.snappedStart?.shapeId === movingShape.id) {
-                const newPos = getNodePosition(
-                    { ...movingShape, x: newX, y: newY },
+                const newStartPos = getNodePosition(
+                    movingShape,
                     shape.snappedStart.position
                 );
-                updates.startX = newPos.x;
-                updates.startY = newPos.y;
+                if (newStartPos) {
+                    updates.startX = newStartPos.x;
+                    updates.startY = newStartPos.y;
+                }
             }
             
+            // Handle end point connection
             if (shape.snappedEnd?.shapeId === movingShape.id) {
-                const newPos = getNodePosition(
-                    { ...movingShape, x: newX, y: newY },
+                const newEndPos = getNodePosition(
+                    movingShape,
                     shape.snappedEnd.position
                 );
-                updates.endX = newPos.x;
-                updates.endY = newPos.y;
+                if (newEndPos) {
+                    updates.endX = newEndPos.x;
+                    updates.endY = newEndPos.y;
+                }
             }
             
-            return { ...shape, ...updates };
+            return Object.keys(updates).length > 0 ? { ...shape, ...updates } : shape;
         }
         return shape;
     });
