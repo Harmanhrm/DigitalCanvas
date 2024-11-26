@@ -138,37 +138,40 @@ const Canvas = () => {
         if (!startPos) return;
         const currentPos = getCanvasPosition(e);
         if (resizing) {
-            setShapes(prev => prev.map(shape => {
-                if (shape.id !== resizing.id) return shape;
-
-                const dx = currentPos.x - startPos.x;
-                const dy = currentPos.y - startPos.y;
-                let newShape = { ...shape };
-
-                switch (resizing.handle) {
-                    case 'se':
-                        newShape.width = Math.max(10, shape.width + dx);
-                        newShape.height = Math.max(10, shape.height + dy);
-                        break;
-                    case 'sw':
-                        newShape.width = Math.max(10, shape.width - dx);
-                        newShape.x = shape.x + dx;
-                        newShape.height = Math.max(10, shape.height + dy);
-                        break;
-                    case 'ne':
-                        newShape.width = Math.max(10, shape.width + dx);
-                        newShape.height = Math.max(10, shape.height - dy);
-                        newShape.y = shape.y + dy;
-                        break;
-                    case 'nw':
-                        newShape.width = Math.max(10, shape.width - dx);
-                        newShape.height = Math.max(10, shape.height - dy);
-                        newShape.x = shape.x + dx;
-                        newShape.y = shape.y + dy;
-                        break;
-                }
+            setShapes(prev => {
+                const updatedShapes = prev.map(shape => {
+                    if (shape.id !== resizing.id) return shape;
+        
+                    const dx = currentPos.x - startPos.x;
+                    const dy = currentPos.y - startPos.y;
+                    let newShape = { ...shape };
+        
+                    switch (resizing.handle) {
+                        case 'se':
+                            newShape.width = Math.max(10, shape.width + dx);
+                            newShape.height = Math.max(10, shape.height + dy);
+                            break;
+                        case 'sw':
+                            newShape.width = Math.max(10, shape.width - dx);
+                            newShape.x = shape.x + dx;
+                            newShape.height = Math.max(10, shape.height + dy);
+                            break;
+                        case 'ne':
+                            newShape.width = Math.max(10, shape.width + dx);
+                            newShape.height = Math.max(10, shape.height - dy);
+                            newShape.y = shape.y + dy;
+                            break;
+                        case 'nw':
+                            newShape.width = Math.max(10, shape.width - dx);
+                            newShape.height = Math.max(10, shape.height - dy);
+                            newShape.x = shape.x + dx;
+                            newShape.y = shape.y + dy;
+                            break;
+                    }
                 return newShape;
-            }));
+                });
+                return updateConnectedArrows(updatedShapes, updatedShapes.find(s => s.id === resizing.id));
+            });
             setStartPos(currentPos);
             return;
         }
@@ -517,6 +520,30 @@ const Canvas = () => {
                     {showNodes ? 'Hide Nodes' : 'Show Nodes'}
                 </button>
             </div>
+            <div className='toolbar toolbar-right'>
+            <button 
+        className="tool-button"
+        onClick={deleteSelectedShape}
+        disabled={!selectedId}
+    >
+        Delete
+    </button>
+    <button 
+        className="tool-button"
+        onClick={copySelectedShape}
+        disabled={!selectedId}
+    >
+        Copy
+    </button>
+    <button 
+        className="tool-button"
+        onClick={pasteShape}
+        disabled={!clipboard}
+    >
+        Paste
+    </button>
+            </div>
+            
             <div 
                 ref={canvasRef}
                 className="canvas-area"
