@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
     TOOLS,
     getNodePosition,
@@ -20,6 +20,9 @@ const Canvas = () => {
     const [startPos, setStartPos] = useState(null);
     const canvasRef = useRef(null);
 
+    const [resizing, setResizing] = useState(null); 
+    const [clipboard, setClipboard] = useState(null);
+
     const getCanvasPosition = useCallback((e) => {
         const rect = canvasRef.current.getBoundingClientRect();
         return {
@@ -27,7 +30,83 @@ const Canvas = () => {
             y: e.clientY - rect.top
         };
     }, []);
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (selectedId) {
+                if (e.key === 'Delete' || e.key === 'Backspace') {
+                    e.preventDefault();
+                    deleteSelectedShape();
+                } else if (e.ctrlKey || e.metaKey) {
+                    if (e.key === 'c') {
+                        e.preventDefault();
+                        copySelectedShape();
+                    } else if (e.key === 'v') {
+                        e.preventDefault();
+                        pasteShape();
+                    }
+                }
+            }
+        };
 
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [selectedId, shapes]);
+    const deleteSelectedShape = () => {
+        setShapes(prev => {
+            
+            const selectedShape = prev.find(s => s.id === selectedId);
+            if (!selectedShape) return prev;
+
+            
+            if (selectedShape.type === TOOLS.RECTANGLE) {
+                return prev.filter(shape => {
+                    if (shape.type === TOOLS.ARROW) {
+                        const isConnected = 
+                            shape.snappedStart?.shapeId === selectedId ||
+                            shape.snappedEnd?.shapeId === selectedId;
+                        return !isConnected;
+                    }
+                    return shape.id !== selectedId;
+                });
+            }
+
+            
+            return prev.filter(s => s.id !== selectedId);
+        });
+        setSelectedId(null);
+    };
+
+    const copySelectedShape = () => {
+        const shapeToCopy = shapes.find(s => s.id === selectedId);
+        if (shapeToCopy) {
+            setClipboard({
+                ...shapeToCopy,
+                id: null, 
+                snappedStart: null, 
+                snappedEnd: null
+            });
+        }
+    };
+
+    const pasteShape = () => {
+        if (clipboard) {
+            const offset = 20; 
+            const newShape = {
+                ...clipboard,
+                id: Date.now(),
+                x: clipboard.x + offset,
+                y: clipboard.y + offset,
+                ...(clipboard.type === TOOLS.ARROW ? {
+                    startX: clipboard.startX + offset,
+                    startY: clipboard.startY + offset,
+                    endX: clipboard.endX + offset,
+                    endY: clipboard.endY + offset
+                } : {})
+            };
+            setShapes(prev => [...prev, newShape]);
+            setSelectedId(newShape.id);
+        }
+    };
     const handleMouseDown = (e) => {
         const pos = getCanvasPosition(e);
         
@@ -58,7 +137,41 @@ const Canvas = () => {
     const handleMouseMove = (e) => {
         if (!startPos) return;
         const currentPos = getCanvasPosition(e);
+        if (resizing) {
+            setShapes(prev => prev.map(shape => {
+                if (shape.id !== resizing.id) return shape;
 
+                const dx = currentPos.x - startPos.x;
+                const dy = currentPos.y - startPos.y;
+                let newShape = { ...shape };
+
+                switch (resizing.handle) {
+                    case 'se':
+                        newShape.width = Math.max(10, shape.width + dx);
+                        newShape.height = Math.max(10, shape.height + dy);
+                        break;
+                    case 'sw':
+                        newShape.width = Math.max(10, shape.width - dx);
+                        newShape.x = shape.x + dx;
+                        newShape.height = Math.max(10, shape.height + dy);
+                        break;
+                    case 'ne':
+                        newShape.width = Math.max(10, shape.width + dx);
+                        newShape.height = Math.max(10, shape.height - dy);
+                        newShape.y = shape.y + dy;
+                        break;
+                    case 'nw':
+                        newShape.width = Math.max(10, shape.width - dx);
+                        newShape.height = Math.max(10, shape.height - dy);
+                        newShape.x = shape.x + dx;
+                        newShape.y = shape.y + dy;
+                        break;
+                }
+                return newShape;
+            }));
+            setStartPos(currentPos);
+            return;
+        }
         if (isDrawing) {
             setShapes(prev => {
                 const current = prev[prev.length - 1];
@@ -157,6 +270,9 @@ const Canvas = () => {
     }
 
     const handleMouseUp = () => {
+        if (resizing) {
+            setResizing(null);
+        }
         if (isDrawing) {
             setIsDrawing(false);
             setSelectedTool(null);
@@ -259,6 +375,35 @@ const Canvas = () => {
                                 }}
                             />
                         ))
+                    )}
+                    {isSelected && (
+                        <>
+                            {['nw', 'ne', 'sw', 'se'].map(handle => (
+                                <div
+                                    key={handle}
+                                    className="resize-handle"
+                                    style={{
+                                        position: 'absolute',
+                                        width: '8px',
+                                        height: '8px',
+                                        backgroundColor: '#4a9eff',
+                                        border: '1px solid white',
+                                        borderRadius: '50%',
+                                        ...(handle === 'nw' ? { top: '-4px', left: '-4px' } :
+                                            handle === 'ne' ? { top: '-4px', right: '-4px' } :
+                                            handle === 'sw' ? { bottom: '-4px', left: '-4px' } :
+                                            { bottom: '-4px', right: '-4px' }),
+                                        cursor: `${handle}-resize`,
+                                        zIndex: 3
+                                    }}
+                                    onMouseDown={(e) => {
+                                        e.stopPropagation();
+                                        setResizing({ handle, id: shape.id });
+                                        setStartPos(getCanvasPosition(e));
+                                    }}
+                                />
+                            ))}
+                        </>
                     )}
                 </div>
             );
