@@ -1,6 +1,7 @@
 const TOOLS = {
     RECTANGLE: 'rectangle',
-    ARROW: 'arrow'
+    ARROW: 'arrow',
+    TEXT: ''
 };
 
 const getNodePosition = (shape, position) => {
@@ -73,11 +74,18 @@ const createShape = (type, position) => {
     return {
         id: Date.now(),
         type,
+        text: '',  
+        isEditing: false,  
         ...(type === TOOLS.RECTANGLE ? {
             x: position.x,
             y: position.y,
             width: 0,
             height: 0
+        } : type === TOOLS.TEXT ? {
+            x: position.x,
+            y: position.y,
+            width: 100,  
+            height: 30   
         } : {
             startX: position.x,
             startY: position.y,

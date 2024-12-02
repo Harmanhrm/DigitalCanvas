@@ -22,6 +22,20 @@ const Canvas = () => {
 
     const [resizing, setResizing] = useState(null); 
     const [clipboard, setClipboard] = useState(null);
+    const [editingText, setEditingText] = useState(null);
+
+    
+    const handleTextChange = (id, newText) => {
+        setShapes(prev => prev.map(shape => 
+            shape.id === id ? { ...shape, text: newText } : shape
+        ));
+    };
+    const handleDoubleClick = (e, id) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setEditingText(id);
+        setSelectedId(id);
+    };
 
     const getCanvasPosition = useCallback((e) => {
         const rect = canvasRef.current.getBoundingClientRect();
@@ -378,7 +392,47 @@ const handleShapeClick = (e, id) => {
 
     const renderShape = (shape) => {
         const isSelected = shape.id === selectedId;
-    
+        const isEditing = editingText === shape.id;
+
+        if (shape.type === TOOLS.TEXT) {
+            return (
+                <div
+                    key={shape.id}
+                    className={`shape text ${isSelected ? 'selected' : ''}`}
+                    style={{
+                        position: 'absolute',
+                        left: shape.x,
+                        top: shape.y,
+                        minWidth: '50px',
+                        padding: '4px',
+                        cursor: 'move',
+                        border: isSelected ? '2px solid #4a9eff' : '1px solid transparent',
+                        zIndex: isSelected ? 2 : 1
+                    }}
+                    onClick={(e) => handleShapeClick(e, shape.id)}
+                    onDoubleClick={(e) => handleDoubleClick(e, shape.id)}
+                >
+                    {isEditing ? (
+                        <textarea
+                            value={shape.text}
+                            onChange={(e) => handleTextChange(shape.id, e.target.value)}
+                            onBlur={() => setEditingText(null)}
+                            autoFocus
+                            style={{
+                                width: '100%',
+                                minHeight: '20px',
+                                border: 'none',
+                                outline: 'none',
+                                resize: 'both'
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                        />
+                    ) : (
+                        <div>{shape.text || 'Double click to edit'}</div>
+                    )}
+                </div>
+            );
+        }
         if (shape.type === TOOLS.RECTANGLE) {
             return (
                 <div
@@ -393,10 +447,34 @@ const handleShapeClick = (e, id) => {
                         cursor: 'move',
                         backgroundColor: '#fff',
                         border: isSelected ? '2px solid #4a9eff' : '1px solid #000',
-                        zIndex: isSelected ? 2 : 1
+                        zIndex: isSelected ? 2 : 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
                     }}
                     onClick={(e) => handleShapeClick(e, shape.id)}
-                >
+                    onDoubleClick={(e) => handleDoubleClick(e, shape.id)}
+                    >
+                        {isEditing ? (
+                            <textarea
+                                value={shape.text}
+                                onChange={(e) => handleTextChange(shape.id, e.target.value)}
+                                onBlur={() => setEditingText(null)}
+                                autoFocus
+                                style={{
+                                    width: '90%',
+                                    height: '90%',
+                                    border: 'none',
+                                    outline: 'none',
+                                    resize: 'none',
+                                    backgroundColor: 'transparent',
+                                    textAlign: 'center'
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                            />
+                        ) : (
+                            <div>{shape.text || 'Double click to add text'}</div>
+                        )}
                     {(showNodes || isSelected) && (
                         Object.entries({
                             left: { left: -6, top: '50%' },
