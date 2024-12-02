@@ -227,7 +227,6 @@ const Canvas = () => {
                     const dy = currentPos.y - startPos.y;
         
                     if (moving.type === TOOLS.RECTANGLE) {
-                        
                         const movedShape = {
                             ...moving,
                             x: moving.x + dx,
@@ -235,31 +234,54 @@ const Canvas = () => {
                         };
                         
                         
-                        const updatedShapes = prev.map(shape => 
+                        let updatedShapes = prev.map(shape =>
                             shape.id === selectedId ? movedShape : shape
                         );
-        
                         
-                        return updateConnectedArrows(updatedShapes, movedShape);
-                    } else if (moving.type === TOOLS.ARROW) {
+                        
+                        updatedShapes = updatedShapes.map(shape => {
+                            if (shape.type === TOOLS.ARROW) {
+                                let newShape = { ...shape };
+                                
+                                
+                                if (shape.snappedStart?.shapeId === selectedId) {
+                                    const newPos = getNodePosition(movedShape, shape.snappedStart.position);
+                                    newShape.startX = newPos.x;
+                                    newShape.startY = newPos.y;
+                                }
+                                
+                                
+                                if (shape.snappedEnd?.shapeId === selectedId) {
+                                    const newPos = getNodePosition(movedShape, shape.snappedEnd.position);
+                                    newShape.endX = newPos.x;
+                                    newShape.endY = newPos.y;
+                                }
+                                
+                                return newShape;
+                            }
+                            return shape;
+                        });
+                
+                        return updatedShapes;
+                    }
+                    else if (moving.type === TOOLS.ARROW) {
+                        
                         return prev.map(shape => {
                             if (shape.id === selectedId) {
-                                const newShape = {
-                                    ...shape,
-                                    startX: shape.startX + dx,
-                                    startY: shape.startY + dy,
-                                    endX: shape.endX + dx,
-                                    endY: shape.endY + dy
-                                };
+                                const newShape = { ...shape };
                                 
-                                if (shape.snappedStart) {
-                                    newShape.startX = shape.startX;
-                                    newShape.startY = shape.startY;
+                                
+                                if (!shape.snappedStart) {
+                                    newShape.startX = shape.startX + dx;
+                                    newShape.startY = shape.startY + dy;
                                 }
-                                if (shape.snappedEnd) {
-                                    newShape.endX = shape.endX;
-                                    newShape.endY = shape.endY;
+                                
+                                
+                                if (!shape.snappedEnd) {
+                                    newShape.endX = shape.endX + dx;
+                                    newShape.endY = shape.endY + dy;
                                 }
+                                
                                 return newShape;
                             }
                             return shape;
@@ -286,44 +308,71 @@ const Canvas = () => {
         setDraggedEndpoint(null);
     };
 
-    const handleShapeClick = (e, id) => {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        if (isDrawing || isDragging) return;
-    
-        const clickPos = getCanvasPosition(e);
-        const shape = shapes.find(s => s.id === id);
-        
-        if (!shape) return;
-    
-        
-        if (shape.type === TOOLS.RECTANGLE) {
-            const buffer = 5;
-            const isHit = clickPos.x >= shape.x - buffer && 
-                         clickPos.x <= shape.x + shape.width + buffer && 
-                         clickPos.y >= shape.y - buffer && 
-                         clickPos.y <= shape.y + shape.height + buffer;
-            
-            if (isHit) {
-                setSelectedId(selectedId === id ? null : id);
-                return; 
-            }
-        }
-        
-        
-        if (shape.type === TOOLS.ARROW && isPointOnArrow(clickPos, shape)) {
-            setSelectedId(selectedId === id ? null : id);
-        }
-    };
     
 
+const handleShapeClick = (e, id) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (isDrawing || isDragging) return;
+
+    const clickPos = getCanvasPosition(e);
+    const shape = shapes.find(s => s.id === id);
+    
+    if (!shape) return;
+
+    if (shape.type === TOOLS.RECTANGLE) {
+        const buffer = 5;
+        const isHit = clickPos.x >= shape.x - buffer && 
+                     clickPos.x <= shape.x + shape.width + buffer && 
+                     clickPos.y >= shape.y - buffer && 
+                     clickPos.y <= shape.y + shape.height + buffer;
+        
+        if (isHit) {
+            setSelectedId(id);
+        }
+    } else if (shape.type === TOOLS.ARROW) {
+        
+        const buffer = 5;  
+        const dx = shape.endX - shape.startX;
+        const dy = shape.endY - shape.startY;
+        const length = Math.sqrt(dx * dx + dy * dy);
+        
+        
+        const crossProduct = (clickPos.x - shape.startX) * dy - (clickPos.y - shape.startY) * dx;
+        const distance = Math.abs(crossProduct / length);
+        
+        
+        const dotProduct = ((clickPos.x - shape.startX) * dx + (clickPos.y - shape.startY) * dy) / length;
+        const isWithinBounds = dotProduct >= 0 && dotProduct <= length;
+        
+        if (distance <= buffer && isWithinBounds) {
+            setSelectedId(id);
+            return;
+        }
+
+        
+        const startDistance = Math.sqrt(
+            Math.pow(clickPos.x - shape.startX, 2) + 
+            Math.pow(clickPos.y - shape.startY, 2)
+        );
+        const endDistance = Math.sqrt(
+            Math.pow(clickPos.x - shape.endX, 2) + 
+            Math.pow(clickPos.y - shape.endY, 2)
+        );
+
+        if (startDistance <= buffer || endDistance <= buffer) {
+            setSelectedId(id);
+        }
+    }
+};
     const handleCanvasClick = (e) => {
         if (e.target === canvasRef.current) {
+            
             setSelectedId(null);
             setIsDragging(false);
-        setStartPos(null);
-        setDraggedEndpoint(null);
+            setStartPos(null);
+            setDraggedEndpoint(null);
         }
     };
 
@@ -413,6 +462,14 @@ const Canvas = () => {
         }
 
         
+        const padding = 10;
+        const minX = Math.min(shape.startX, shape.endX) - padding;
+        const minY = Math.min(shape.startY, shape.endY) - padding;
+        const maxX = Math.max(shape.startX, shape.endX) + padding;
+        const maxY = Math.max(shape.startY, shape.endY) + padding;
+        const width = maxX - minX;
+        const height = maxY - minY;
+    
         const dx = shape.endX - shape.startX;
         const dy = shape.endY - shape.startY;
         const angle = Math.atan2(dy, dx);
@@ -420,52 +477,85 @@ const Canvas = () => {
         const arrowWidth = 6;
 
         const arrowHeadPoints = [
-            shape.endX,
-            shape.endY,
-            shape.endX - arrowLength * Math.cos(angle) + arrowWidth * Math.sin(angle),
-            shape.endY - arrowLength * Math.sin(angle) - arrowWidth * Math.cos(angle),
-            shape.endX - arrowLength * Math.cos(angle) - arrowWidth * Math.sin(angle),
-            shape.endY - arrowLength * Math.sin(angle) + arrowWidth * Math.cos(angle)
+            shape.endX - minX,
+            shape.endY - minY,
+            shape.endX - minX - arrowLength * Math.cos(angle) + arrowWidth * Math.sin(angle),
+            shape.endY - minY - arrowLength * Math.sin(angle) - arrowWidth * Math.cos(angle),
+            shape.endX - minX - arrowLength * Math.cos(angle) - arrowWidth * Math.sin(angle),
+            shape.endY - minY - arrowLength * Math.sin(angle) + arrowWidth * Math.cos(angle)
         ].join(',');
 
         return (
             <div 
                 key={shape.id}
                 className={`shape arrow-container ${isSelected ? 'selected' : ''}`}
+                style={{
+                    position: 'absolute',
+                    left: minX,
+                    top: minY,
+                    width,
+                    height,
+                    pointerEvents: 'none',  
+                    zIndex: isSelected ? 2 : 1
+                }}
             >
                 <svg
-                    width="100%"
-                    height="100%"
+                    width={width}
+                    height={height}
                     style={{ 
                         position: 'absolute',
                         top: 0,
                         left: 0,
-                        pointerEvents: 'all',
-                        cursor: 'pointer'
                     }}
-                    onClick={(e) => handleShapeClick(e, shape.id)}
                 >
+                    {/* Invisible wider line for hit detection */}
                     <line
-                        x1={shape.startX}
-                        y1={shape.startY}
-                        x2={shape.endX}
-                        y2={shape.endY}
-                        className={`arrow-line ${isSelected ? 'selected' : ''}`}
-                        stroke={isSelected ? '#4a9eff' : 'black'}
+                        x1={shape.startX - minX}
+                        y1={shape.startY - minY}
+                        x2={shape.endX - minX}
+                        y2={shape.endY - minY}
+                        stroke="transparent"
+                        strokeWidth="20"
+                        style={{ 
+                            cursor: 'pointer',
+                            pointerEvents: 'all'
+                        }}
+                        onClick={(e) => handleShapeClick(e, shape.id)}
                     />
+                    {/* Visible line */}
+                    <line
+                        x1={shape.startX - minX}
+                        y1={shape.startY - minY}
+                        x2={shape.endX - minX}
+                        y2={shape.endY - minY}
+                        stroke={isSelected ? '#4a9eff' : 'black'}
+                        strokeWidth="2"
+                        style={{ pointerEvents: 'none' }}
+                    />
+                    {/* Arrow head */}
                     <polygon
                         points={arrowHeadPoints}
                         fill={isSelected ? '#4a9eff' : 'black'}
+                        style={{ pointerEvents: 'none' }}
                     />
                 </svg>
+    
+                {/* Connection nodes */}
                 {(isSelected || showNodes) && (
                     <>
                         <div
                             className="connection-node"
                             style={{
-                                left: shape.startX - 4,
-                                top: shape.startY - 4,
-                                cursor: 'pointer'
+                                position: 'absolute',
+                                left: shape.startX - minX - 6,
+                                top: shape.startY - minY - 6,
+                                width: '12px',
+                                height: '12px',
+                                backgroundColor: '#4a9eff',
+                                borderRadius: '50%',
+                                cursor: 'pointer',
+                                pointerEvents: 'all',
+                                zIndex: 3
                             }}
                             onMouseDown={(e) => {
                                 e.stopPropagation();
@@ -478,9 +568,16 @@ const Canvas = () => {
                         <div
                             className="connection-node"
                             style={{
-                                left: shape.endX - 4,
-                                top: shape.endY - 4,
-                                cursor: 'pointer'
+                                position: 'absolute',
+                                left: shape.endX - minX - 6,
+                                top: shape.endY - minY - 6,
+                                width: '12px',
+                                height: '12px',
+                                backgroundColor: '#4a9eff',
+                                borderRadius: '50%',
+                                cursor: 'pointer',
+                                pointerEvents: 'all',
+                                zIndex: 3
                             }}
                             onMouseDown={(e) => {
                                 e.stopPropagation();

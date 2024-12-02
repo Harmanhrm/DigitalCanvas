@@ -44,24 +44,29 @@ const findNearestNode = (pos, shapes, currentShapeId, snapDistance = 20) => {
     return nearest;
 };
 
-const isPointOnArrow = (point, arrow, tolerance = 5) => {
-    const { startX, startY, endX, endY } = arrow;
+const isPointOnArrow = (point, arrow, tolerance = 10) => {
     
-    const lengthSquared = Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2);
-    if (lengthSquared === 0) return false;
+    const distToStart = Math.sqrt(
+        Math.pow(point.x - arrow.startX, 2) + 
+        Math.pow(point.y - arrow.startY, 2)
+    );
+    const distToEnd = Math.sqrt(
+        Math.pow(point.x - arrow.endX, 2) + 
+        Math.pow(point.y - arrow.endY, 2)
+    );
     
-    const t = Math.max(0, Math.min(1, (
-        (point.x - startX) * (endX - startX) +
-        (point.y - startY) * (endY - startY)
-    ) / lengthSquared));
     
-    const nearestX = startX + t * (endX - startX);
-    const nearestY = startY + t * (endY - startY);
+    const arrowLength = Math.sqrt(
+        Math.pow(arrow.endX - arrow.startX, 2) + 
+        Math.pow(arrow.endY - arrow.startY, 2)
+    );
     
-    return Math.sqrt(
-        Math.pow(point.x - nearestX, 2) +
-        Math.pow(point.y - nearestY, 2)
-    ) <= tolerance;
+    
+    if (distToStart <= tolerance || distToEnd <= tolerance) return true;
+    
+    
+    
+    return Math.abs((distToStart + distToEnd) - arrowLength) <= tolerance;
 };
 
 const createShape = (type, position) => {
@@ -84,13 +89,13 @@ const createShape = (type, position) => {
     };
 };
 
-// Fixed arrow update logic
+
 const updateConnectedArrows = (shapes, movingShape) => {
     return shapes.map(shape => {
         if (shape.type === TOOLS.ARROW) {
             let updates = {};
             
-            // Handle start point connection
+            
             if (shape.snappedStart?.shapeId === movingShape.id) {
                 const newStartPos = getNodePosition(
                     movingShape,
@@ -102,7 +107,7 @@ const updateConnectedArrows = (shapes, movingShape) => {
                 }
             }
             
-            // Handle end point connection
+            
             if (shape.snappedEnd?.shapeId === movingShape.id) {
                 const newEndPos = getNodePosition(
                     movingShape,
